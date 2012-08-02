@@ -36,6 +36,8 @@ import org.dynmap.markers.impl.MarkerAPIImpl;
 import org.dynmap.servlet.FileLockResourceHandler;
 import org.dynmap.servlet.JettyNullLogger;
 import org.dynmap.servlet.LoginServlet;
+import org.dynmap.tilestore.FileSystemTileStorageDriver;
+import org.dynmap.tilestore.TileStorageDriver;
 import org.dynmap.web.BanIPFilter;
 import org.dynmap.web.CustomHeaderFilter;
 import org.dynmap.web.FilterHandler;
@@ -60,6 +62,7 @@ public class DynmapCore {
     private String webhostname = null;
     private int webport = 0;
     private HandlerRouter router = null;
+    public TileStorageDriver tilestore = null;
     public MapManager mapManager = null;
     public PlayerList playerList;
     public ConfigurationNode configuration;
@@ -256,6 +259,9 @@ public class DynmapCore {
         configuration = new ConfigurationNode(f);
         configuration.load();
 
+        /* Initialize tile storage driver */
+        tilestore = new FileSystemTileStorageDriver(this);
+        
         /* Initialize authorization manager */
         if(configuration.getBoolean("login-enabled", false))
             authmgr = new WebAuthManager(this);
