@@ -122,7 +122,7 @@ public class TopoHDShader implements HDShader {
         private int scale;
         private int heightshift;    /* Divide to keep in 0-127 range of colors */
         
-        private OurShaderState(MapIterator mapiter, HDMap map, MapChunkCache cache) {
+        private OurShaderState(MapIterator mapiter, HDMap map, MapChunkCache cache, int scale) {
             this.mapiter = mapiter;
             this.map = map;
             this.lighting = map.getLighting();
@@ -134,7 +134,7 @@ public class TopoHDShader implements HDShader {
                 color = new Color[] { new Color() };
                 tmpcolor = new Color[] { new Color() };
             }
-            scale = (int)map.getPerspective().getScale();
+            this.scale = scale;
             c = new Color();
             /* Compute divider for Y - to map to existing color range */
             int wh = mapiter.getWorldHeight();
@@ -252,10 +252,12 @@ public class TopoHDShader implements HDShader {
      * @param map - map being rendered
      * @param cache - chunk cache containing data for tile to be rendered
      * @param mapiter - iterator used when traversing rays in tile
+     * @param scale - scale of perspecitve
      * @return state object to use for all rays in tile
      */
-    public HDShaderState getStateInstance(HDMap map, MapChunkCache cache, MapIterator mapiter) {
-        return new OurShaderState(mapiter, map, cache);
+    @Override
+    public HDShaderState getStateInstance(HDMap map, MapChunkCache cache, MapIterator mapiter, int scale) {
+        return new OurShaderState(mapiter, map, cache, scale);
     }
     
     /* Add shader's contributions to JSON for map object */

@@ -78,7 +78,7 @@ public class TexturePackHDShader implements HDShader {
         final boolean do_biome_shading;
         final boolean do_better_grass;
         
-        protected ShaderState(MapIterator mapiter, HDMap map, MapChunkCache cache) {
+        protected ShaderState(MapIterator mapiter, HDMap map, MapChunkCache cache, int scale) {
             this.mapiter = mapiter;
             this.map = map;
             this.lighting = map.getLighting();
@@ -91,7 +91,7 @@ public class TexturePackHDShader implements HDShader {
                 tmpcolor = new Color[] { new Color() };
             }
             c = new Color();
-            scaledtp = tp.resampleTexturePack(map.getPerspective().getModelScale());
+            scaledtp = tp.resampleTexturePack(scale);
             /* Biome raw data only works on normal worlds at this point */
             do_biome_shading = biome_shaded; // && (cache.getWorld().getEnvironment() == Environment.NORMAL);
             do_better_grass = bettergrass;
@@ -225,10 +225,11 @@ public class TexturePackHDShader implements HDShader {
      * @param map - map being rendered
      * @param cache - chunk cache containing data for tile to be rendered
      * @param mapiter - iterator used when traversing rays in tile
+     * @param scale - scale of perspective
      * @return state object to use for all rays in tile
      */
-    public HDShaderState getStateInstance(HDMap map, MapChunkCache cache, MapIterator mapiter) {
-        return new ShaderState(mapiter, map, cache);
+    public HDShaderState getStateInstance(HDMap map, MapChunkCache cache, MapIterator mapiter, int scale) {
+        return new ShaderState(mapiter, map, cache, scale);
     }
     
     /* Add shader's contributions to JSON for map object */
