@@ -36,17 +36,19 @@ import org.dynmap.common.DynmapListenerManager;
 import org.dynmap.common.DynmapListenerManager.EventType;
 import org.dynmap.common.DynmapPlayer;
 import org.dynmap.common.DynmapServerInterface;
-import org.dynmap.common.VersionCheck;
 import org.dynmap.debug.Debug;
 import org.dynmap.debug.Debugger;
 import org.dynmap.hdmap.HDBlockModels;
 import org.dynmap.hdmap.HDMapManager;
 import org.dynmap.hdmap.TexturePack;
+import org.dynmap.hdmap.TexturePack.HDTextureMap;
 import org.dynmap.markers.MarkerAPI;
 import org.dynmap.markers.impl.MarkerAPIImpl;
+import org.dynmap.modsupport.ModSupportImpl;
 import org.dynmap.servlet.FileLockResourceHandler;
 import org.dynmap.servlet.JettyNullLogger;
 import org.dynmap.servlet.LoginServlet;
+import org.dynmap.utils.BlockStep;
 import org.dynmap.utils.FileLockManager;
 import org.dynmap.web.BanIPFilter;
 import org.dynmap.web.CustomHeaderFilter;
@@ -437,15 +439,18 @@ public class DynmapCore implements DynmapCommonAPI {
         
         perTickLimit = configuration.getInteger("per-tick-time-limit", 50);
         if (perTickLimit < 5) perTickLimit = 5;
-        perTickLimit = perTickLimit;
         
         /* Load preupdate/postupdate commands */
         FileLockManager.preUpdateCommand = configuration.getString("custom-commands/image-updates/preupdatecommand", "");
         FileLockManager.postUpdateCommand = configuration.getString("custom-commands/image-updates/postupdatecommand", "");
 
+        /* Process mod support */
+        ModSupportImpl.complete(this.dataDirectory);
         /* Load block models */
+        Log.verboseinfo("Loading models...");
         HDBlockModels.loadModels(this, configuration);
         /* Load texture mappings */
+        Log.verboseinfo("Loading texture mappings...");
         TexturePack.loadTextureMapping(this, configuration);
         
         /* Now, process worlds.txt - merge it in as an override of existing values (since it is only user supplied values) */
@@ -457,15 +462,17 @@ public class DynmapCore implements DynmapCommonAPI {
         world_config.load();
 
         /* Now, process templates */
+        Log.verboseinfo("Loading templates...");
         loadTemplates();
 
         /* If we're persisting ids-by-ip, load it */
         persist_ids_by_ip = configuration.getBoolean("persist-ids-by-ip", true);
-        if(persist_ids_by_ip)
+        if(persist_ids_by_ip) {
+            Log.verboseinfo("Loading userid-by-IP data...");
             loadIDsByIP();
+        }
         
         loadDebuggers();
-
 
         playerList = new PlayerList(getServer(), getFile("hiddenplayers.txt"), configuration);
         playerList.load();
@@ -523,10 +530,101 @@ public class DynmapCore implements DynmapCommonAPI {
         Log.info("version " + plugin_ver + " is enabled - core version " + version );
 
         events.<Object>trigger("initialized", null);
-        
-        VersionCheck.runCheck(this);
+                
+        //dumpColorMap();
         
         return true;
+    }
+    
+    private void dumpColorMap() {
+        int[] sides = new int[] { BlockStep.Y_MINUS.ordinal(), BlockStep.X_PLUS.ordinal(), BlockStep.Z_PLUS.ordinal(), 
+                BlockStep.Y_PLUS.ordinal(), BlockStep.X_MINUS.ordinal(), BlockStep.Z_MINUS.ordinal() };
+        FileWriter fw = null;
+        try {
+            fw = new FileWriter("colormap.txt");
+            TexturePack tp = TexturePack.getTexturePack(this, "standard");
+            if (tp == null) return;
+            tp = tp.resampleTexturePack(1);
+            if (tp == null) return;
+            Color c = new Color();
+            for (int blkid = 1; blkid < 256; blkid++) {
+                int meta0color = 0;
+                for (int blkmeta = 0; blkmeta < 16; blkmeta++) {
+                    HDTextureMap map = HDTextureMap.getMap(blkid, blkmeta, blkmeta);
+                    boolean done = false;
+                    for (int i = 0; (!done) && (i < sides.length); i++) {
+                        int idx = map.getIndexForFace(sides[i]);
+                        if (idx < 0) continue;
+                        int rgb[] = tp.getTileARGB(idx % 1000000);
+                        if (rgb == null) continue;
+                        if (rgb[0] == 0) continue;
+                        c.setARGB(rgb[0]);
+                        idx = (idx / 1000000);
+                        switch(idx) {
+                            case 1: // grass
+                            case 18: // grass
+                                System.out.println("Used grass for " + blkid + ":" + blkmeta);
+                                c.blendColor(tp.getTrivialGrassMultiplier() | 0xFF000000);
+                                break;
+                            case 2: // foliage
+                            case 19: // foliage
+                            case 22: // foliage
+                                System.out.println("Used foliage for " + blkid + ":" + blkmeta);
+                                c.blendColor(tp.getTrivialFoliageMultiplier() | 0xFF000000);
+                                break;
+                            case 13: // pine
+                                c.blendColor(0x619961 | 0xFF000000);
+                                break;
+                            case 14: // birch
+                                c.blendColor(0x80a755 | 0xFF000000);
+                                break;
+                            case 15: // lily
+                                c.blendColor(0x208030 | 0xFF000000);
+                                break;
+                            case 3: // water
+                            case 20: // water
+                                System.out.println("Used water for " + blkid + ":" + blkmeta);
+                                c.blendColor(tp.getTrivialWaterMultiplier() | 0xFF000000);
+                                break;
+                            case 12: // clear inside
+                                if((blkid == 8) || (blkid == 9)) { // special case for water
+                                    System.out.println("Used water for " + blkid + ":" + blkmeta);
+                                    c.blendColor(tp.getTrivialWaterMultiplier() | 0xFF000000);
+                                }
+                                break;
+                        }
+                        int custmult = tp.getCustomBlockMultiplier(blkid, blkmeta);
+                        if (custmult != 0xFFFFFF) {
+                            System.out.println(String.format("Custom color: %06x for %d:%d", custmult, blkid, blkmeta));
+                            if ((custmult & 0xFF000000) == 0) {
+                                custmult |= 0xFF000000;
+                            }
+                            c.blendColor(custmult);
+                        }
+                        String ln = "";
+                        if (blkmeta == 0) {
+                            meta0color = c.getARGB();
+                            ln = blkid + " ";
+                        }
+                        else {
+                            ln = blkid + ":" + blkmeta + " ";
+                        }
+                        if ((blkmeta == 0) || (meta0color != c.getARGB())) {
+                            ln += c.getRed() + " " + c.getGreen() + " " + c.getBlue() + " " + c.getAlpha();
+                            ln += " " + (c.getRed()*4/5) + " " + (c.getGreen()*4/5) + " " + (c.getBlue()*4/5) + " " + c.getAlpha();
+                            ln += " " + (c.getRed()/2) + " " + (c.getGreen()/2) + " " + (c.getBlue()/2) + " " + c.getAlpha();
+                            ln += " " + (c.getRed()*2/5) + " " + (c.getGreen()*2/5) + " " + (c.getBlue()*2/5) + " " + c.getAlpha() + "\n";
+                            fw.write(ln);
+                        }
+                        done = true;
+                    }
+                }
+            }
+        } catch (IOException iox) {
+
+        } finally {
+            if (fw != null) { try { fw.close(); } catch (IOException x) {} }
+        }
     }
 
     private void playerJoined(DynmapPlayer p) {
@@ -633,7 +731,11 @@ public class DynmapCore implements DynmapCommonAPI {
 
     public void loadWebserver() {
         org.eclipse.jetty.util.log.Log.setLog(new JettyNullLogger());
-        webhostname = configuration.getString("webserver-bindaddress", "0.0.0.0");
+        String ip = server.getServerIP();
+        if ((ip == null) || (ip.trim().length() == 0)) {
+            ip = "0.0.0.0";
+        }
+        webhostname = configuration.getString("webserver-bindaddress", ip);
         webport = configuration.getInteger("webserver-port", 8123);
         
         webServer = new Server();
@@ -1073,10 +1175,10 @@ public class DynmapCore implements DynmapCommonAPI {
             if (c.equals("render") && checkPlayerPermission(sender,"render")) {
                 if (player != null) {
                     DynmapLocation loc = player.getLocation();
-                    
-                    mapManager.touch(loc.world, (int)loc.x, (int)loc.y, (int)loc.z, "render");
-                    
-                    sender.sendMessage("Tile render queued.");
+                    if (loc != null) {
+                        mapManager.touch(loc.world, (int)loc.x, (int)loc.y, (int)loc.z, "render");
+                        sender.sendMessage("Tile render queued.");
+                    }
                 }
                 else {
                     sender.sendMessage("Command can only be issued by player.");
@@ -2124,6 +2226,10 @@ public class DynmapCore implements DynmapCommonAPI {
     
     public int getMaxTickUseMS() {
         return perTickLimit;
+    }
+    // Notice that server has finished starting (needed for forge, which starts dynmap before full server is running)
+    public void serverStarted() {
+        events.<Object>trigger("server-started", null);
     }
 }
 

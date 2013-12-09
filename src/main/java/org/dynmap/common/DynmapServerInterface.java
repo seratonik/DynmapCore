@@ -1,5 +1,6 @@
 package org.dynmap.common;
 
+import java.io.File;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
@@ -125,6 +126,14 @@ public interface DynmapServerInterface {
      */
     public boolean isModLoaded(String name);
     /**
+     * Get version of mod with given name
+     * 
+     * @param name - name of mod
+     * @return version, or null of not found
+     */
+    public String getModVersion(String name);
+
+    /**
      * Get block ID at given coordinate in given world (if chunk is loaded)
      * @param wname - world name
      * @param x - X coordinate
@@ -138,4 +147,16 @@ public interface DynmapServerInterface {
      * @returns ticks per second
      */
     public double getServerTPS();
+    /**
+     * Get address configured for server
+     * 
+     * @return "" or null if none configured
+     */
+    public String getServerIP();
+    /**
+     * Get file/directory for given mod (for loading mod resources)
+     * @param mod - mod name
+     * @return file or directory, or null if not loaded
+     */
+    public File getModContainerFile(String mod);
 }

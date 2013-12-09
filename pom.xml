@@ -49,6 +49,42 @@
 				</configuration>
 			</plugin>
 
+		    <plugin>
+        		<artifactId>maven-jar-plugin</artifactId>
+        		<version>2.3.2</version>
+        		<executions>
+          			<execution>
+            			<id>default-jar</id>
+            			<phase>package</phase>
+            			<goals>
+              				<goal>jar</goal>
+            			</goals>
+          			</execution>
+          			<execution>
+            			<id>modsupport-jar</id>
+            			<phase>package</phase>
+            			<goals>
+              				<goal>jar</goal>
+            			</goals>
+			            <configuration>
+              				<classifier>modsupport</classifier>
+              				<classesDirectory>modsupport</classesDirectory>
+            			</configuration>
+          			</execution>
+          			<execution>
+            			<id>modsupport-pre15-jar</id>
+            			<phase>package</phase>
+            			<goals>
+              				<goal>jar</goal>
+            			</goals>
+			            <configuration>
+              				<classifier>modsupport-pre15</classifier>
+              				<classesDirectory>modsupport-pre15</classesDirectory>
+            			</configuration>
+          			</execution>
+        		</executions>
+      		</plugin>
+      		
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-shade-plugin</artifactId>
@@ -126,12 +162,12 @@
 		<dependency>
 			<groupId>org.eclipse.jetty</groupId>
 			<artifactId>jetty-server</artifactId>
-			<version>8.1.7.v20120910</version>
+			<version>8.1.14.v20131031</version>
 		</dependency>
 		<dependency>
 			<groupId>org.eclipse.jetty</groupId>
 			<artifactId>jetty-servlet</artifactId>
-			<version>8.1.7.v20120910</version>
+			<version>8.1.14.v20131031</version>
 		</dependency>
 
 		<dependency>
@@ -156,5 +192,5 @@
 			<version>${nbtVersion}</version>
 		</dependency>
 	</dependencies>
-	<version>1.9</version>
+	<version>1.9.1</version>
 </project>

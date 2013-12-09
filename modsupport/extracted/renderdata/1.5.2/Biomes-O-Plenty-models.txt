@@ -1,0 +1,2 @@
+# Biomes O Plenty Block mapping (moved to 1.6.2 version of 0.5.9)
+
